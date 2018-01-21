@@ -79,22 +79,22 @@ exports.calculateConvoResponseTimes = function(sortedObjectOfConvos) {
         cumulativeResponseSpeed += 0
       }
     })
-    console.log(`Typically responds in ${(cumulativeResponseSpeed/60/respondedMessages).toFixed(2)} minutes... aka ${(cumulativeResponseSpeed/60/60/respondedMessages).toFixed(2)} hours`)
-    console.log(`Responds to ${(respondedMessages/responseTimes.length*100).toFixed(2)}% of messages`)
+    // console.log(`Typically responds in ${(cumulativeResponseSpeed/60/respondedMessages).toFixed(0)} minutes... aka ${(cumulativeResponseSpeed/60/60/respondedMessages).toFixed(0)} hours`)
+    // console.log(`Responds to ${(respondedMessages/responseTimes.length*100).toFixed(0)}% of messages`)
     if (cumulativeResponseSpeed/60/respondedMessages && respondedMessages/responseTimes.length) {
       res({
-        typical_response_time: (cumulativeResponseSpeed/60/respondedMessages).toFixed(2),
-        percentage_responded_to: (respondedMessages/responseTimes.length*100).toFixed(2),
+        typical_response_time: (cumulativeResponseSpeed/60/respondedMessages).toFixed(0),
+        percentage_responded_to: (respondedMessages/responseTimes.length*100).toFixed(0),
       })
     } else if (cumulativeResponseSpeed/60/respondedMessages && !respondedMessages/responseTimes.length) {
       res({
-        typical_response_time: (cumulativeResponseSpeed/60/respondedMessages).toFixed(2),
+        typical_response_time: (cumulativeResponseSpeed/60/respondedMessages).toFixed(0),
         percentage_responded_to: 0,
       })
     } else if (respondedMessages/responseTimes.length && !cumulativeResponseSpeed/60/respondedMessages) {
       res({
         typical_response_time: 0,
-        percentage_responded_to: (respondedMessages/responseTimes.length).toFixed(2),
+        percentage_responded_to: (respondedMessages/responseTimes.length).toFixed(0),
       })
     } else {
       res({

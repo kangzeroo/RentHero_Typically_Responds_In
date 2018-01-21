@@ -17,5 +17,6 @@ module.exports = function(app){
 	app.get('/test', json_encoding, Test.test)
 
 	// last active
+	app.post('/get_responsiveness_stats', [json_encoding, originCheck], Landlord.get_responsiveness_stats)
 	app.post('/update_last_active', [json_encoding, originCheck], Landlord.update_last_active)
 }
