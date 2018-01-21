@@ -30,16 +30,26 @@ const updateTypicalResponseTime = require('../routes/Postgres/Queries/LandlordRe
 
 exports.runBatchJob = function(){
   console.log('===== BEGIN BATCH JOB =====')
+  if (process.env.NODE_ENV === 'production') {
+    initiateBatch()
+    setInterval(() => {
+      initiateBatch()
+    }, 1000*60*60*24)
+  } else {
+    console.log('NODE_ENV is in development, so batch job will not be run')
+  }
+}
 
+const initiateBatch = () => {
   grabAllLandlords()
     .then((landlords) => {
-      const landlordArray = landlords.filter((lord) => lord.corporation_id === "1b58d64a-ee48-4a19-be87-657fc388d38a").map((landlord, arrayIndex) => {
+      const landlordArray = landlords.map((landlord, arrayIndex) => {
         return processLandlordResponseTime(landlord, arrayIndex)
       })
       return Promise.all(landlordArray)
     })
     .then((allDone) => {
-      // console.log(allDone)
+      console.log(allDone)
       console.log('===== END BATCH JOB =====')
     })
     .catch((err) => {
@@ -68,7 +78,7 @@ const processLandlordResponseTime = (landlord, arrayIndex) => {
           console.log(err)
           rej(err)
         })
-    }, arrayIndex*10000)
+    }, arrayIndex*5000)
   })
   return p
 }

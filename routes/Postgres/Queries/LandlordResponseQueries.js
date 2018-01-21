@@ -59,35 +59,64 @@ exports.updateTypicalResponseTime = (corporation_id, responseStats) => {
 
     query(update_time, values)
     .then((data) => {
-      res()
+      // console.log(data)
+      res(data)
     })
     .catch((err) => {
-      rej('updated landlord response time')
+      console.log(err)
+      rej(err)
     })
   })
   return p
 }
 
-exports.update_landlord_last_active = (req, res, next) => {
+exports.update_landlord_last_active = (landlord_id) => {
+  const p = new Promise((res, rej) => {
+    const last_active = new Date().getTime()
+    const values = [landlord_id, last_active]
+    console.log(values)
 
-  const info = req.body
-  const last_active = new Date().getTime()
-  const values = [info.corporation_id, last_active]
-
-  const update_last_active = `INSERT INTO corporation_response (corporation_id, last_active)
-                                     VALUES ($1, $2)
-                                     ON CONFLICT (corporation_id)
-                                     DO UPDATE
-                                     SET last_active = $2
-                              `
-
-  query(update_last_active, values)
-  .then((data) => {
-    res.json({
-      message: 'updated last active'
+    const update_last_active = `INSERT INTO corporation_response (corporation_id, last_active)
+                                       VALUES ($1, $2)
+                                       ON CONFLICT (corporation_id)
+                                       DO UPDATE
+                                       SET last_active = $2
+                                `
+    query(update_last_active, values)
+    .then((data) => {
+      res({
+        message: 'success'
+      })
+    })
+    .catch((err) => {
+      console.log(err)
+      rej(err)
     })
   })
-  .catch((err) => {
-    res.status(500).send('Failed to update landlord_last_active')
+  return p
+}
+
+exports.get_landlord_responsiveness_stats = (landlord_id) => {
+  const p = new Promise((res, rej) => {
+    const values = [landlord_id]
+
+    const get_stats = `SELECT * FROM corporation_response WHERE corporation_id = $1`
+    const return_rows = (rows) => {
+      res(rows[0])
+    }
+    query(get_stats, values)
+      .then((data) => {
+        return stringify_rows(data)
+      })
+      .then((data) => {
+        return json_rows(data)
+      })
+      .then((data) => {
+        return return_rows(data)
+      })
+      .catch((error) => {
+        rej(error)
+      })
   })
+  return p
 }
