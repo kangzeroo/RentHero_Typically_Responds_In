@@ -2,7 +2,7 @@ const pg = require('pg')
 
 
 const env = process.env.NODE_ENV || 'development'
-const config = require('../credentials/postgres_config')[env]
+const config = require('../../credentials/postgres_config')[env]
 
 console.log(env)
 // create a config to configure both pooling behavior

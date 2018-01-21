@@ -18,9 +18,4 @@ module.exports = function(app){
 
 	// last active
 	app.post('/update_last_active', [json_encoding, originCheck], Landlord.update_last_active)
-
-	// landlord response queries
-	app.post('/grab_all_landlord_ids', [json_encoding, originCheck], ResponseQueries.grab_all_landlord_ids)
-	app.post('/update_response_time', [json_encoding, originCheck], ResponseQueries.update_response_time)
-	app.post('/update_landlord_last_active', [json_encoding, originCheck], ResponseQueries.update_landlord_last_active)
 }
