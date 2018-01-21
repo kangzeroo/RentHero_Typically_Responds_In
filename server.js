@@ -1,71 +1,61 @@
+const express = require('express')
+const https = require('https')
+const fs = require('fs')
+const morgan = require('morgan')
+const router = require('./router')
+const cors = require('cors')
+const runBatchJob = require('./api/typically_responds_in').runBatchJob
+const app = express()
 
-/*
-// HOW IT WORKS
-    1. grabAllLandlords() to get an array of IDs
-    2. map over processLandlordResponseTime() on each landlord and use setTimeout() with timeout of 1000ms * arrayIndex (thus 1st landlord is executed at 1s, 2nd landlord begins execution at 2s..etc)
-            a. grab last 1000 messages in DynamoDB 'COMMUNICATION_LOGS' where 'SENDER_ID' or 'RECEIVER_ID' was the landlord
-            b. group those messages into their own convos (use the concatenation strategy, sender_id + receiver_id = convo_id)
-            c. sort each convo by date and grab the first instance of:
-                    i. a message with 'SENDER_ID === CORPORATION_ID', and
-                    ii. a message with 'RECEIVER_ID === CORPORATION_ID'
-            d. for each convo, calculate the difference between the DATE of each message in part 2c (aka the response time per convo)
-            e. average out the response times per convo. this is the typically_responds_in value
-            f. save the typically_responds_in value to each landlord, in Postgres
-    3. complete the batch job when all landlords have completed all of step 2
-*/
+// Database setup
 
-const grabAllLandlords = require('api/postgres_api').grabAllLandlords
-const grabConvosForLandlord = require('api/dynamodb_api').grabConvosForLandlord
-const groupMessagesIntoConvos = require('api/calculation_api').groupMessagesIntoConvos
-const calculateConvoResponseTimes = require('api/calculation_api').calculateConvoResponseTimes
-const calculateTypicalResponseTime = require('api/calculation_api').calculateTypicalResponseTime
-const updateTypicalResponseTime = require('api/postgres_api').updateTypicalResponseTime
+// App setup
+// morgan and bodyParser are middlewares. any incoming requests will be passed through each
+// morgan is a logging framework to see incoming requests. used mostly for debugging
+app.use(morgan('tiny'));
+// CORS middleware (cross origin resource sharing) to configure what domain & ips can talk to our server api
+// CORS is used for user security on web browsers. Enable CORS on server to allow all I.P. addresses
+app.use(cors());
 
+// we instantiate the router function that defines all our HTTP route endpoints
+router(app);
 
-const runBatchJob = () => {
-  console.log('===== BEGIN BATCH JOB =====')
+// run the batch job of calculating response times
+runBatchJob()
 
-  grabAllLandlords()
-    .then((landlords) => {
-      const landlordArray = landlords.map((landlord, arrayIndex) => {
-        return processLandlordResponseTime(landlord, arrayIndex)
-      })
-      return Promise.all(landlordArray)
-    })
-    .then((allDone) => {
-      console.log(allDone)
-      console.log('===== END BATCH JOB =====')
-    })
-    .catch((err) => {
-      console.log(err)
-    })
-}
+// Server setup
+// if there is an environment variable of PORT already defined, use it. otherwise use port 3002
+const port = process.env.PORT || 3009
 
-const processLandlordResponseTime = (landlord, arrayIndex) => {
-  const p = new Promise((res, rej) => {
-    setTimeout(() => {
-      grabConvosForLandlord(landlord.corporation_id)
-        .then((allMessages) => {
-          return groupMessagesIntoConvos(allMessages)
-        })
-        .then((convos) => {
-          return calculateConvoResponseTimes(convos)
-        })
-        .then((convoResponseTimes) => {
-          return calculateTypicalResponseTime(convoResponseTimes)
-        })
-        .then((avgTime) => {
-          return updateTypicalResponseTime(landlord.corporation_id, avgTime)
-        })
-        .then((result) => {
-          console.log(result)
-          res(result)
-        })
-        .catch((err) => {
-          console.log(err)
-          rej(err)
-        })
-    }, arrayIndex*10000)
+// create a server with the native node https library
+if (process.env.NODE_ENV === 'production') {
+  // instantiate the SSL certificate necessary for HTTPS
+  const options = {
+      ca: fs.readFileSync('./credentials/rentburrow_com.ca-bundle'),
+      key: fs.readFileSync('./credentials/rentburrow_com.key'),
+      cert: fs.readFileSync('./credentials/rentburrow_com.crt'),
+      requestCert: false,
+      rejectUnauthorized: false
+  }
+  const server = https.createServer(options, app)
+  // listen to the server on port
+  server.listen(port, function(){
+    console.log("Running in: ", process.env.NODE_ENV)
+    console.log("Server listening on https: ", port)
   })
-  return p
+} else {
+  // instantiate the SSL certificate necessary for HTTPS
+  const options = {
+      ca: fs.readFileSync('./credentials/renthero_host.ca-bundle'),
+      key: fs.readFileSync('./credentials/renthero_host.key'),
+      cert: fs.readFileSync('./credentials/renthero_host.crt'),
+      requestCert: false,
+      rejectUnauthorized: false
+  }
+  const server = https.createServer(options, app)
+  // listen to the server on port
+  server.listen(port, function(){
+    console.log("Running in: ", process.env.NODE_ENV)
+    console.log("Server listening on https: ", port)
+  })
 }
