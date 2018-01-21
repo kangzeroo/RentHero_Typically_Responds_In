@@ -20,54 +20,59 @@ const log_through = data => {
   return data
 }
 
-exports.grab_all_landlord_ids = (req, res, next) => {
-  const get_ids = `SELECT corporation_id FROM corporation`
+exports.grabAllLandlords = () => {
+  const p = new Promise((res, rej) => {
+    const get_ids = `SELECT corporation_id FROM corporation`
 
-  const return_rows = (rows) => {
-    res.json(rows)
-  }
-
-  query(get_ids)
-    .then((data) => {
-      return stringify_rows(data)
-    })
-    .then((data) => {
-      return json_rows(data)
-    })
-    .then((data) => {
-      return return_rows(data)
-    })
-    .catch((error) => {
-        res.status(500).send('Failed to get corporation_ids')
-    })
+    const return_rows = (rows) => {
+      res(rows)
+    }
+    query(get_ids)
+      .then((data) => {
+        return stringify_rows(data)
+      })
+      .then((data) => {
+        return json_rows(data)
+      })
+      .then((data) => {
+        return return_rows(data)
+      })
+      .catch((error) => {
+        console.log(error)
+        rej('Failed to get corporation_ids')
+      })
+  })
+  return p
 }
 
-exports.update_response_time = (req, res, next) => {
-  const info = req.body
-  const values = [info.corporation_id, info.avg_time]
+exports.updateTypicalResponseTime = (corporation_id, responseStats) => {
+  const p = new Promise((res, rej) => {
+    console.log(responseStats)
+    const values = [corporation_id, responseStats.typical_response_time, responseStats.percentage_responded_to]
 
-  const update_time = `INSERT INTO corporation_response (corporation_id, avg_time)
-                              VALUES ($1, $2)
-                              ON CONFLICT (corporation_id)
-                              DO UPDATE
-                              SET avg_time = $2;
-                       `
+    const update_time = `INSERT INTO corporation_response (corporation_id, avg_time, percent_responded)
+                                VALUES ($1, $2, $3)
+                                ON CONFLICT (corporation_id)
+                                DO UPDATE
+                                SET avg_time = $2;
+                         `
 
-  query(update_response_time, values)
-  .then((data) => {
-    res.json({
-      message: 'updated landlord response time'
+    query(update_time, values)
+    .then((data) => {
+      res()
+    })
+    .catch((err) => {
+      rej('updated landlord response time')
     })
   })
-  .catch((err) => {
-    res.status(500).send('updated landlord response time')
-  })
-
+  return p
 }
 
 exports.update_landlord_last_active = (req, res, next) => {
+
   const info = req.body
-  const values = [info.corporation_id, info.last_active]
+  const last_active = new Date().getTime()
+  const values = [info.corporation_id, last_active]
 
   const update_last_active = `INSERT INTO corporation_response (corporation_id, last_active)
                                      VALUES ($1, $2)

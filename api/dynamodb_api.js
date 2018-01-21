@@ -3,6 +3,7 @@ const aws_config = require('../credentials/aws_config')
 const dynaDoc = require("dynamodb-doc")
 AWS.config.update(aws_config)
 const Rx = require('rxjs')
+const COMMUNICATIONS_HISTORY = require('./dynamodb_tablenames').COMMUNICATIONS_HISTORY
 
 const dynamodb = new AWS.DynamoDB({
   dynamodb: '2012-08-10',
@@ -11,36 +12,19 @@ const dynamodb = new AWS.DynamoDB({
 const docClient = new dynaDoc.DynamoDB(dynamodb)
 
 
-modules.grabConvosForLandlord = function(landlord_id) {
-  const p = new Promise((res, rej) => {
-    const bothSides = [
-      query_dynamodb('By_RECEIVER_ID', 'RECEIVER_ID', landlord_id),
-      query_dynamodb('By_SENDER_ID', 'SENDER_ID', landlord_id)
-    ]
-    Promise.all(bothSides).then((messages) => {
-      console.log(messages.length)
-      res()
-    }).catch((err) => {
-      console.log(err)
-      rej(err)
-    })
-  })
-  return p
-}
-
-
-exports.query_dynamodb = function(indexName, indexKey, landlord_id) {
+const query_dynamodb = (indexName, indexKey, landlord_id) => {
 	const params = {
-      "TableName": "Building_Interactions_Intel",
-      "KeyConditionExpression": "#LANDLORD_ID = :building_id",
+      "TableName": COMMUNICATIONS_HISTORY,
+      "KeyConditionExpression": "#LANDLORD_ID = :corporation_id",
       "IndexName": indexName,
       "FilterExpression": "#DATE > :date",
       "ExpressionAttributeNames": {
         "#LANDLORD_ID": indexKey,
+        "#DATE": 'DATE',
       },
       "ExpressionAttributeValues": {
-        ":building_id": landlord_id,
-        ":date": 1512940693
+        ":corporation_id": landlord_id,
+        ":date": unixDateSince(90)
       }
     }
   const p = new Promise((res, rej) => {
@@ -86,6 +70,34 @@ exports.query_dynamodb = function(indexName, indexKey, landlord_id) {
         console.log(Items.length)
         res(Items)
       }
+    })
+  })
+  return p
+}
+
+
+const unixDateSince = (numDays) => {
+  const today = new Date()
+  const todayUnix = today.getTime()
+  const sinceUnix = todayUnix - (numDays*24*60*60*1000)
+  return sinceUnix
+}
+
+exports.grabConvosForLandlord = function(landlord_id) {
+  const p = new Promise((res, rej) => {
+    const bothSides = [
+      query_dynamodb('By_RECEIVER_ID', 'RECEIVER_ID', landlord_id),
+      query_dynamodb('By_SENDER_ID', 'SENDER_ID', landlord_id)
+    ]
+    Promise.all(bothSides).then((convoSides) => {
+      let allMessages = []
+      convoSides.forEach((side) => {
+        allMessages = allMessages.concat(side)
+      })
+      res(allMessages)
+    }).catch((err) => {
+      console.log(err)
+      rej(err)
     })
   })
   return p
